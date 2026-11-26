@@ -1,5 +1,5 @@
 # 🎙️ TranskripLokal
-
+Demo : https://fauzi8162.github.io/TranskripLokal-Voice-to-Text/
 **Ubah file audio menjadi transkrip teks ber-timestamp 100% langsung di browser — tanpa API key, tanpa server backend, dan tanpa upload file.**
 
 ![HTML5](https://img.shields.io/badge/HTML5-Single%20File-E34F26?style=flat-square&logo=html5&logoColor=white)
