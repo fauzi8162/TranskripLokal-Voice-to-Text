@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TranskripLokal — Ubah Audio ke Transkrip 100% di Browser</title>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-indigo-500/20 selection:text-indigo-700 dark:selection:text-indigo-300 transition-colors duration-200">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-2rem)] pointer-events-none"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">TranskripLokal</h1>
+            <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              100% Lokal • Tanpa API • Whisper ONNX
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 sm:hidden truncate">100% Lokal • Tanpa API • Whisper ONNX</p>
+        </div>
+      </div>
+
+      <!-- Header Utility Actions -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-info-toggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 transition-colors" aria-expanded="false" aria-controls="info-drawer">
+          <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+          <span class="hidden sm:inline">Cara Kerja</span>
+        </button>
+
+        <button id="btn-theme-toggle" type="button" title="Ganti Tema Gelap/Terang" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 transition-colors">
+          <!-- Sun icon (shown in dark mode) -->
+          <svg id="icon-sun" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+          </svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg id="icon-moon" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Collapsible Info Panel: How Browser AI Caching Works -->
+    <div id="info-drawer" class="hidden border-t border-slate-200 dark:border-slate-800 bg-indigo-50/70 dark:bg-indigo-950/30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 font-bold">1</div>
+          <div>
+            <p class="font-semibold text-slate-900 dark:text-white">Privasi Penuh (Tanpa Upload)</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">Audio Anda tidak pernah meninggalkan perangkat. Seluruh transkripsi dihitung langsung di CPU/GPU Anda menggunakan WebGPU atau WebAssembly.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 font-bold">2</div>
+          <div>
+            <p class="font-semibold text-slate-900 dark:text-white">Cache Otomatis di Browser</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">Saat pertama kali dijalankan, model Whisper ONNX (~40–250 MB) diunduh ke <em>Browser Cache Storage</em>. Pemakaian berikutnya langsung instan &amp; bisa offline.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 font-bold">3</div>
+          <div>
+            <p class="font-semibold text-slate-900 dark:text-white">Web Worker Anti-Lag</p>
+            <p class="text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">Proses inferensi AI berjalan di <em>background thread</em> terpisah sehingga halaman tetap responsif saat memutar audio atau mengedit teks.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+
+    <!-- Global Error Banner (Hidden by default) -->
+    <div id="error-banner" class="hidden mb-6 rounded-2xl border border-rose-200 dark:border-rose-900/70 bg-rose-50 dark:bg-rose-950/40 p-4 flex items-start gap-3">
+      <svg class="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+      <div class="flex-1 min-w-0">
+        <h3 id="error-title" class="text-sm font-semibold text-rose-900 dark:text-rose-200">Terjadi Kesalahan</h3>
+        <p id="error-message" class="text-xs sm:text-sm text-rose-700 dark:text-rose-300/90 mt-0.5 break-words"></p>
+      </div>
+      <button id="btn-dismiss-error" type="button" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors" aria-label="Tutup pesan error">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Fallback Info Banner (Shown if WebGPU automatically falls back to WASM) -->
+    <div id="fallback-banner" class="hidden mb-6 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-3.5 flex items-start gap-3">
+      <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
+      <p id="fallback-message" class="text-xs sm:text-sm text-amber-800 dark:text-amber-300 flex-1"></p>
+      <button id="btn-dismiss-fallback" type="button" class="p-1 rounded-lg text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/50">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Responsive 2-Column Studio Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: Audio Input, Config & Progress (5 cols on desktop) -->
+      <section class="lg:col-span-5 flex flex-col gap-5">
+
+        <!-- Card 1: Audio Source (Upload or Record) -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-5">
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">1</span>
+              Sumber Audio
+            </h2>
+            <span id="webgpu-status-pill" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              Memeriksa engine...
+            </span>
+          </div>
+
+          <!-- Drag & Drop Zone -->
+          <div id="drop-zone" class="relative group rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 bg-slate-50/70 dark:bg-slate-950/40 p-6 text-center transition-all cursor-pointer">
+            <input id="file-input" type="file" accept=".mp3,.wav,.m4a,.ogg,.webm,.flac,.mp4,audio/*,video/mp4" class="hidden" />
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-slate-800 dark:text-slate-200">
+              Tarik &amp; lepas file audio di sini
+            </p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              atau <span class="text-indigo-600 dark:text-indigo-400 font-semibold underline underline-offset-2">pilih file dari perangkat</span>
+            </p>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5">
+              Mendukung MP3, WAV, M4A, OGG, WEBM, FLAC, MP4
+            </p>
+          </div>
+
+          <!-- Divider & Live Microphone Recorder -->
+          <div class="flex items-center gap-3 my-4">
+            <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-slate-400">atau rekam langsung</span>
+            <div class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btn-record" type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm transition-all">
+              <span id="record-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span id="record-label">Rekam Mikrofon</span>
+              <span id="record-timer" class="hidden font-mono text-xs px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300">00:00</span>
+            </button>
+          </div>
+
+          <!-- Loaded Audio Preview Card -->
+          <div id="audio-preview-card" class="hidden mt-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-950/60 p-3.5">
+            <div class="flex items-start justify-between gap-3 mb-2.5">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <p id="audio-filename" class="text-sm font-semibold text-slate-900 dark:text-white truncate">audio.mp3</p>
+                  <p id="audio-meta" class="text-xs text-slate-500 dark:text-slate-400">0 MB • 0:00</p>
+                </div>
+              </div>
+              <button id="btn-remove-audio" type="button" title="Hapus file audio" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <audio id="audio-player" controls class="w-full h-10 rounded-lg"></audio>
+          </div>
+        </div>
+
+        <!-- Card 2: Model & Language Configuration -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-5">
+          <h2 class="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+            <span class="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">2</span>
+            Pengaturan Model Whisper
+          </h2>
+
+          <div class="space-y-3.5">
+            <!-- Model Selector -->
+            <div>
+              <label for="select-model" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Model AI (di-cache otomatis di browser)</label>
+              <select id="select-model" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all">
+                <option value="onnx-community/whisper-tiny">Whisper Tiny — Cepat &amp; Ringan (~40 MB)</option>
+                <option value="onnx-community/whisper-base" selected>Whisper Base — Seimbang / Rekomendasi (~77 MB)</option>
+                <option value="onnx-community/whisper-small">Whisper Small — Lebih Akurat (~250 MB)</option>
+              </select>
+            </div>
+
+            <!-- Language & Engine Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="select-language" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Bahasa Audio</label>
+                <select id="select-language" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all">
+                  <option value="indonesian" selected>Bahasa Indonesia</option>
+                  <option value="auto">Deteksi Otomatis</option>
+                  <option value="english">English</option>
+                  <option value="malay">Bahasa Melayu</option>
+                  <option value="javanese">Basa Jawa</option>
+                  <option value="sundanese">Basa Sunda</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="select-engine" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Engine Komputasi</label>
+                <select id="select-engine" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all">
+                  <option value="auto" selected>Otomatis (WebGPU / WASM)</option>
+                  <option value="wasm">CPU (WASM Stabil)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Primary CTA & Cancel/Reset Buttons -->
+          <div class="mt-5 flex flex-col sm:flex-row gap-2.5">
+            <button id="btn-transcribe" type="button" disabled class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 shadow-sm shadow-indigo-500/25 transition-all">
+              <svg id="icon-spark" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              <svg id="icon-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span id="btn-transcribe-text">Mulai Transkripsi</span>
+            </button>
+
+            <button id="btn-cancel-reset" type="button" class="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+              <span id="btn-cancel-text">Reset</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 3: Live Progress Panel (Visible during or right after processing) -->
+        <div id="progress-panel" class="hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-5">
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <span id="progress-pulse" class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+              Status Proses Lokal
+            </h2>
+            <span id="elapsed-timer" class="font-mono text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">00:00</span>
+          </div>
+
+          <!-- 3-Step Pipeline Tracker -->
+          <ol class="space-y-3 text-xs sm:text-sm">
+            <!-- Step 1: Model Loading -->
+            <li id="step-model" class="rounded-xl border border-slate-200/80 dark:border-slate-800 p-3 bg-slate-50/70 dark:bg-slate-950/40 transition-colors">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <span id="step-model-icon" class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-[11px] font-bold shrink-0">1</span>
+                  <span class="font-medium text-slate-800 dark:text-slate-200">Memuat Model ke Cache Browser</span>
+                </div>
+                <span id="step-model-badge" class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Menunggu</span>
+              </div>
+              <!-- Individual Model File Download Bars -->
+              <div id="model-files-list" class="hidden mt-3 space-y-2 pt-2 border-t border-slate-200/70 dark:border-slate-800"></div>
+            </li>
+
+            <!-- Step 2: Audio Decoding -->
+            <li id="step-decode" class="rounded-xl border border-slate-200/80 dark:border-slate-800 p-3 bg-slate-50/70 dark:bg-slate-950/40 transition-colors">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <span id="step-decode-icon" class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-[11px] font-bold shrink-0">2</span>
+                  <span class="font-medium text-slate-800 dark:text-slate-200">Mendekode Audio ke 16kHz Mono</span>
+                </div>
+                <span id="step-decode-badge" class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Menunggu</span>
+              </div>
+            </li>
+
+            <!-- Step 3: Whisper Inference -->
+            <li id="step-infer" class="rounded-xl border border-slate-200/80 dark:border-slate-800 p-3 bg-slate-50/70 dark:bg-slate-950/40 transition-colors">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <span id="step-infer-icon" class="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-[11px] font-bold shrink-0">3</span>
+                  <span class="font-medium text-slate-800 dark:text-slate-200">Memproses Transkripsi</span>
+                </div>
+                <span id="step-infer-badge" class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Menunggu</span>
+              </div>
+              <div id="infer-bar-wrap" class="hidden mt-2.5">
+                <div class="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                  <div class="h-full w-2/5 bg-indigo-500 rounded-full animate-pulse"></div>
+                </div>
+                <p id="infer-subtext" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">Menganalisis segmen audio &amp; menyusun timestamp...</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: Transcript Output Workspace (7 cols on desktop) -->
+      <section class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col min-h-[540px] lg:min-h-[640px] overflow-hidden">
+
+        <!-- Output Panel Header: Tabs & Action Toolbar -->
+        <div class="p-4 sm:px-5 border-b border-slate-200/90 dark:border-slate-800 flex flex-col gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- View Mode Tabs -->
+            <div class="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/60" role="tablist">
+              <button id="tab-interactive" type="button" role="tab" aria-selected="true" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all">
+                Tampilan Interaktif
+              </button>
+              <button id="tab-raw" type="button" role="tab" aria-selected="false" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all">
+                Teks Mentah ([0:00])
+              </button>
+            </div>
+
+            <!-- Segment Counter & Sample Preview Trigger -->
+            <div class="flex items-center gap-2">
+              <span id="segment-count-badge" class="hidden text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                0 baris
+              </span>
+              <button id="btn-load-sample" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100/80 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/60 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                Muat Contoh Format
+              </button>
+            </div>
+          </div>
+
+          <!-- Export & Copy Action Bar -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-copy" type="button" disabled class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/70 dark:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+              </svg>
+              Salin Transkrip
+            </button>
+
+            <button id="btn-download-txt" type="button" disabled class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download .TXT
+            </button>
+
+            <button id="btn-download-srt" type="button" disabled class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+              </svg>
+              Download .SRT
+            </button>
+          </div>
+        </div>
+
+        <!-- Output Content Body -->
+        <div class="flex-1 flex flex-col relative">
+
+          <!-- Empty State (Shown before any transcript exists) -->
+          <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-center p-8 sm:p-12">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-4">
+              <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">Hasil Transkrip Akan Muncul di Sini</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mt-1.5 leading-relaxed">
+              Pilih file audio atau rekam suara dari mikrofon, lalu klik <strong class="text-slate-700 dark:text-slate-300">Mulai Transkripsi</strong>. Setiap segmen akan diformat otomatis dengan timestamp rapi seperti <code class="font-mono text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400">[0:00]</code>.
+            </p>
+            <button id="btn-empty-sample" type="button" class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 transition-colors">
+              Lihat Contoh Format Hasil
+            </button>
+          </div>
+
+          <!-- View 1: Interactive Segment List -->
+          <div id="view-interactive" class="hidden flex-1 flex flex-col">
+            <div class="px-4 sm:px-5 py-2.5 bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>Klik timestamp <span class="font-mono text-indigo-600 dark:text-indigo-400">[0:00]</span> untuk melompat ke audio • Klik teks untuk mengedit langsung</span>
+            </div>
+            <div id="interactive-list" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5 max-h-[540px]"></div>
+          </div>
+
+          <!-- View 2: Raw Plain Text ([0:00] ...) -->
+          <div id="view-raw" class="hidden flex-1 flex flex-col p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-slate-500 dark:text-slate-400">Format standar siap salin. Perubahan di sini otomatis tersinkron ke Tampilan Interaktif.</span>
+            </div>
+            <textarea id="raw-textarea" spellcheck="false" class="flex-1 w-full min-h-[420px] rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-950 p-4 font-mono text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 resize-y" placeholder="[0:00] Transkrip akan tampil di sini..."></textarea>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Subtle Footer -->
+  <footer class="border-t border-slate-200/80 dark:border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+    Ditenagai oleh <strong class="font-medium text-slate-700 dark:text-slate-300">@huggingface/transformers v3</strong> &amp; OpenAI Whisper ONNX • Berjalan 100% di browser tanpa server eksternal.
+  </footer>
+
+  <!-- =========================================================================
+       EMBEDDED WEB WORKER SCRIPT (Loaded as ESM Blob URL — Non-Blocking AI)
+       ========================================================================= -->
+  <script id="whisper-worker-source" type="javascript/worker">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1';
+
+    // Always pull ONNX models from Hugging Face Hub and store them in Browser Cache Storage
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    let cachedPipeline = null;
+    let cachedModelId = null;
+    let cachedDevice = null;
+
+    /**
+     * Checks whether WebGPU is genuinely available with an active adapter.
+     */
+    async function hasWebGPUAdapter() {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.gpu) {
+          const adapter = await navigator.gpu.requestAdapter();
+          return Boolean(adapter);
+        }
+      } catch (_) {
+        return false;
+      }
+      return false;
+    }
+
+    /**
+     * Returns optimal ONNX quantization dtype configuration per device & model size.
+     */
+    function getDtypeConfig(modelId, device) {
+      if (device === 'webgpu') {
+        return {
+          encoder_model: 'fp32',
+          decoder_model_merged: 'q4',
+        };
+      }
+      // WASM CPU configuration
+      if (modelId.includes('whisper-small')) {
+        return {
+          encoder_model: 'q8',
+          decoder_model_merged: 'q4',
+        };
+      }
+      return 'q8';
+    }
+
+    /**
+     * Loads or reuses the Whisper Automatic Speech Recognition pipeline.
+     * Automatically falls back from WebGPU to WASM if WebGPU fails to initialize.
+     */
+    async function loadTranscriber(modelId, requestedEngine) {
+      let targetDevice = 'wasm';
+      if (requestedEngine === 'auto') {
+        const gpuAvailable = await hasWebGPUAdapter();
+        targetDevice = gpuAvailable ? 'webgpu' : 'wasm';
+        if (!gpuAvailable) {
+          self.postMessage({
+            type: 'engine_info',
+            device: 'wasm',
+            note: 'WebGPU tidak terdeteksi pada browser ini, menggunakan engine CPU (WASM).',
+          });
+        }
+      } else {
+        targetDevice = 'wasm';
+      }
+
+      // Reuse already-loaded pipeline if model & device match
+      if (cachedPipeline && cachedModelId === modelId && cachedDevice === targetDevice) {
+        self.postMessage({ type: 'model_ready', device: cachedDevice, fromCache: true });
+        return cachedPipeline;
+      }
+
+      // Dispose previous pipeline if switching models/devices
+      if (cachedPipeline && typeof cachedPipeline.dispose === 'function') {
+        try {
+          await cachedPipeline.dispose();
+        } catch (_) {}
+        cachedPipeline = null;
+      }
+
+      const progressCallback = (info) => {
+        self.postMessage({
+          type: 'model_progress',
+          status: info.status,
+          file: info.file || info.name || '',
+          progress: typeof info.progress === 'number' ? info.progress : null,
+          loaded: typeof info.loaded === 'number' ? info.loaded : null,
+          total: typeof info.total === 'number' ? info.total : null,
+        });
+      };
+
+      const createPipeline = async (device) => {
+        const dtype = getDtypeConfig(modelId, device);
+        self.postMessage({ type: 'status', stage: 'loading_model', device });
+        return await pipeline('automatic-speech-recognition', modelId, {
+          device,
+          dtype,
+          progress_callback: progressCallback,
+        });
+      };
+
+      if (targetDevice === 'webgpu') {
+        try {
+          cachedPipeline = await createPipeline('webgpu');
+          cachedModelId = modelId;
+          cachedDevice = 'webgpu';
+          self.postMessage({ type: 'model_ready', device: 'webgpu', fromCache: false });
+          return cachedPipeline;
+        } catch (gpuError) {
+          self.postMessage({
+            type: 'fallback',
+            reason: `Inisialisasi WebGPU gagal (${gpuError?.message || 'driver tidak mendukung'}). Otomatis beralih ke mode CPU (WASM).`,
+          });
+          // Retry cleanly on WASM
+          cachedPipeline = await createPipeline('wasm');
+          cachedModelId = modelId;
+          cachedDevice = 'wasm';
+          self.postMessage({ type: 'model_ready', device: 'wasm', fromCache: false });
+          return cachedPipeline;
+        }
+      } else {
+        cachedPipeline = await createPipeline('wasm');
+        cachedModelId = modelId;
+        cachedDevice = 'wasm';
+        self.postMessage({ type: 'model_ready', device: 'wasm', fromCache: false });
+        return cachedPipeline;
+      }
+    }
+
+    /**
+     * Normalizes Whisper output chunks into clean, timestamp-safe segments.
+     */
+    function normalizeChunks(result, audioDuration) {
+      const rawChunks = Array.isArray(result?.chunks) ? result.chunks : [];
+      const cleaned = [];
+      let lastEnd = 0;
+
+      for (let i = 0; i < rawChunks.length; i++) {
+        const chunk = rawChunks[i];
+        const text = String(chunk?.text || '').replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+
+        const ts = Array.isArray(chunk?.timestamp) ? chunk.timestamp : [null, null];
+        let start = typeof ts[0] === 'number' && Number.isFinite(ts[0]) ? ts[0] : lastEnd;
+        let end = typeof ts[1] === 'number' && Number.isFinite(ts[1]) ? ts[1] : null;
+
+        if (start < 0) start = 0;
+        if (end === null || end < start) {
+          // Estimate end from next chunk start or fallback duration
+          const nextTs = rawChunks[i + 1]?.timestamp;
+          if (Array.isArray(nextTs) && typeof nextTs[0] === 'number' && nextTs[0] >= start) {
+            end = nextTs[0];
+          } else {
+            end = Math.min(audioDuration || start + 4, start + 5);
+          }
+        }
+        lastEnd = Math.max(lastEnd, end);
+
+        cleaned.push({ start, end, text });
+      }
+
+      // Fallback if model returned only full text without chunks
+      if (cleaned.length === 0 && typeof result?.text === 'string' && result.text.trim()) {
+        cleaned.push({
+          start: 0,
+          end: audioDuration || 5,
+          text: result.text.replace(/\s+/g, ' ').trim(),
+        });
+      }
+
+      return cleaned;
+    }
+
+    /**
+     * Worker Message Handler
+     */
+    self.addEventListener('message', async (event) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
+
+      if (msg.type === 'check_webgpu') {
+        const available = await hasWebGPUAdapter();
+        self.postMessage({ type: 'webgpu_check_result', available });
+        return;
+      }
+
+      if (msg.type === 'transcribe') {
+        const { audio, modelId, language, engine, duration } = msg;
+
+        try {
+          let transcriber = await loadTranscriber(modelId, engine);
+
+          const options = {
+            return_timestamps: true,
+            chunk_length_s: 30,
+            stride_length_s: 5,
+            task: 'transcribe',
+          };
+
+          if (language && language !== 'auto') {
+            options.language = language;
+          }
+
+          self.postMessage({ type: 'status', stage: 'transcribing', device: cachedDevice });
+
+          let result;
+          try {
+            result = await transcriber(audio, options);
+          } catch (inferErr) {
+            // If runtime inference fails under WebGPU, automatically recover on WASM
+            if (cachedDevice === 'webgpu') {
+              self.postMessage({
+                type: 'fallback',
+                reason: `Inferensi WebGPU mengalami kendala (${inferErr?.message || 'error GPU'}). Otomatis mengulang dengan mode CPU (WASM).`,
+              });
+              transcriber = await loadTranscriber(modelId, 'wasm');
+              self.postMessage({ type: 'status', stage: 'transcribing', device: 'wasm' });
+              result = await transcriber(audio, options);
+            } else {
+              throw inferErr;
+            }
+          }
+
+          const segments = normalizeChunks(result, duration);
+          self.postMessage({
+            type: 'complete',
+            segments,
+            device: cachedDevice,
+          });
+        } catch (err) {
+          self.postMessage({
+            type: 'error',
+            message: err?.message || String(err),
+          });
+        }
+      }
+    });
+  </script>
+
+  <!-- =========================================================================
+       MAIN APPLICATION CONTROLLER
+       ========================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* -----------------------------------------------------------------------
+         1. Application State
+         ----------------------------------------------------------------------- */
+      const state = {
+        audioFile: null,
+        audioObjectUrl: null,
+        audioDuration: 0,
+        segments: [], // [{ start: number, end: number, text: string }]
+        activeTab: 'interactive', // 'interactive' | 'raw'
+        isProcessing: false,
+        isRecording: false,
+        mediaRecorder: null,
+        recordedChunks: [],
+        recordInterval: null,
+        recordSeconds: 0,
+        elapsedInterval: null,
+        elapsedSeconds: 0,
+        worker: null,
+        workerBlobUrl: null,
+        fileProgressMap: new Map(),
+        activeSegmentIndex: -1,
+      };
+
+      const SAMPLE_SEGMENTS = [
+        { start: 0, end: 6, text: 'Halo teman-teman, selamat datang kembali di podcast Teknologi Santai.' },
+        { start: 6, end: 14, text: 'Hari ini kita akan membahas bagaimana kecerdasan buatan membantu pekerjaan sehari-hari.' },
+        { start: 14, end: 21, text: 'Banyak orang mengira teknologi ini rumit, padahal penggunaannya sangat sederhana.' },
+        { start: 21, end: 28, text: 'Mulai dari merangkum catatan rapat hingga merapikan transkrip video panjang.' },
+        { start: 28, end: 35, text: 'Mari kita simak tips praktis yang bisa langsung Anda terapkan hari ini.' },
+        { start: 35, end: 42, text: 'Jangan lupa siapkan catatan dan kopi hangat sebelum kita mulai!' },
+      ];
+
+      /* -----------------------------------------------------------------------
+         2. DOM Element References
+         ----------------------------------------------------------------------- */
+      const el = {
+        btnThemeToggle: document.getElementById('btn-theme-toggle'),
+        btnInfoToggle: document.getElementById('btn-info-toggle'),
+        infoDrawer: document.getElementById('info-drawer'),
+        toastContainer: document.getElementById('toast-container'),
+        errorBanner: document.getElementById('error-banner'),
+        errorTitle: document.getElementById('error-title'),
+        errorMessage: document.getElementById('error-message'),
+        btnDismissError: document.getElementById('btn-dismiss-error'),
+        fallbackBanner: document.getElementById('fallback-banner'),
+        fallbackMessage: document.getElementById('fallback-message'),
+        btnDismissFallback: document.getElementById('btn-dismiss-fallback'),
+
+        webgpuStatusPill: document.getElementById('webgpu-status-pill'),
+        dropZone: document.getElementById('drop-zone'),
+        fileInput: document.getElementById('file-input'),
+        btnRecord: document.getElementById('btn-record'),
+        recordDot: document.getElementById('record-dot'),
+        recordLabel: document.getElementById('record-label'),
+        recordTimer: document.getElementById('record-timer'),
+
+        audioPreviewCard: document.getElementById('audio-preview-card'),
+        audioFilename: document.getElementById('audio-filename'),
+        audioMeta: document.getElementById('audio-meta'),
+        btnRemoveAudio: document.getElementById('btn-remove-audio'),
+        audioPlayer: document.getElementById('audio-player'),
+
+        selectModel: document.getElementById('select-model'),
+        selectLanguage: document.getElementById('select-language'),
+        selectEngine: document.getElementById('select-engine'),
+        btnTranscribe: document.getElementById('btn-transcribe'),
+        btnTranscribeText: document.getElementById('btn-transcribe-text'),
+        iconSpark: document.getElementById('icon-spark'),
+        iconSpinner: document.getElementById('icon-spinner'),
+        btnCancelReset: document.getElementById('btn-cancel-reset'),
+        btnCancelText: document.getElementById('btn-cancel-text'),
+
+        progressPanel: document.getElementById('progress-panel'),
+        progressPulse: document.getElementById('progress-pulse'),
+        elapsedTimer: document.getElementById('elapsed-timer'),
+        stepModel: document.getElementById('step-model'),
+        stepModelIcon: document.getElementById('step-model-icon'),
+        stepModelBadge: document.getElementById('step-model-badge'),
+        modelFilesList: document.getElementById('model-files-list'),
+        stepDecode: document.getElementById('step-decode'),
+        stepDecodeIcon: document.getElementById('step-decode-icon'),
+        stepDecodeBadge: document.getElementById('step-decode-badge'),
+        stepInfer: document.getElementById('step-infer'),
+        stepInferIcon: document.getElementById('step-infer-icon'),
+        stepInferBadge: document.getElementById('step-infer-badge'),
+        inferBarWrap: document.getElementById('infer-bar-wrap'),
+        inferSubtext: document.getElementById('infer-subtext'),
+
+        tabInteractive: document.getElementById('tab-interactive'),
+        tabRaw: document.getElementById('tab-raw'),
+        segmentCountBadge: document.getElementById('segment-count-badge'),
+        btnLoadSample: document.getElementById('btn-load-sample'),
+        btnEmptySample: document.getElementById('btn-empty-sample'),
+        btnCopy: document.getElementById('btn-copy'),
+        btnDownloadTxt: document.getElementById('btn-download-txt'),
+        btnDownloadSrt: document.getElementById('btn-download-srt'),
+
+        emptyState: document.getElementById('empty-state'),
+        viewInteractive: document.getElementById('view-interactive'),
+        interactiveList: document.getElementById('interactive-list'),
+        viewRaw: document.getElementById('view-raw'),
+        rawTextarea: document.getElementById('raw-textarea'),
+      };
+
+      /* -----------------------------------------------------------------------
+         3. Formatting & Utility Helpers
+         ----------------------------------------------------------------------- */
+
+      /**
+       * Formats seconds into [M:SS] (under 1 hour, no leading zero on minutes)
+       * or [H:MM:SS] (1 hour or more).
+       */
+      function formatTimestamp(seconds) {
+        const safeSec = Math.max(0, Math.floor(Number(seconds) || 0));
+        const hrs = Math.floor(safeSec / 3600);
+        const mins = Math.floor((safeSec % 3600) / 60);
+        const secs = safeSec % 60;
+        const ss = String(secs).padStart(2, '0');
+        if (hrs > 0) {
+          const mm = String(mins).padStart(2, '0');
+          return `${hrs}:${mm}:${ss}`;
+        }
+        return `${mins}:${ss}`;
+      }
+
+      /**
+       * Formats seconds into SubRip (.SRT) format: HH:MM:SS,mmm
+       */
+      function formatSrtTimestamp(seconds) {
+        const safe = Math.max(0, Number(seconds) || 0);
+        const totalMs = Math.round(safe * 1000);
+        const ms = totalMs % 1000;
+        const totalSec = Math.floor(totalMs / 1000);
+        const secs = totalSec % 60;
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const hrs = Math.floor(totalSec / 3600);
+        return (
+          String(hrs).padStart(2, '0') +
+          ':' +
+          String(mins).padStart(2, '0') +
+          ':' +
+          String(secs).padStart(2, '0') +
+          ',' +
+          String(ms).padStart(3, '0')
+        );
+      }
+
+      function formatClock(totalSeconds) {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+        return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+      }
+
+      /**
+       * Builds the exact requested plain text output:
+       * [0:00] Kalimat pertama.
+       * [0:06] Kalimat kedua.
+       */
+      function segmentsToRawText(segments) {
+        return segments
+          .map((seg) => `[${formatTimestamp(seg.start)}] ${seg.text.trim()}`)
+          .join('\n');
+      }
+
+      /**
+       * Builds a valid SubRip (.srt) string from segments.
+       */
+      function segmentsToSrt(segments) {
+        return segments
+          .map((seg, idx) => {
+            const start = seg.start;
+            let end = seg.end;
+            if (typeof end !== 'number' || end <= start) {
+              const next = segments[idx + 1];
+              end = next && next.start > start ? next.start : start + 4;
+            }
+            return `${idx + 1}\n${formatSrtTimestamp(start)} --> ${formatSrtTimestamp(end)}\n${seg.text.trim()}\n`;
+          })
+          .join('\n');
+      }
+
+      /**
+       * Parses edited raw text back into structured segments so Interactive view stays in sync.
+       */
+      function parseRawTextToSegments(rawText) {
+        const lines = rawText.split(/\r?\n/);
+        const parsed = [];
+        const lineRegex = /^\[(\d+):(\d{2})(?::(\d{2}))?\]\s*(.*)$/;
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          const match = line.match(lineRegex);
+          if (match) {
+            let seconds = 0;
+            if (match[3] !== undefined) {
+              // H:MM:SS
+              seconds = parseInt(match[1], 10) * 3600 + parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
+            } else {
+              // M:SS
+              seconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+            }
+            parsed.push({ start: seconds, end: seconds + 5, text: match[4].trim() });
+          } else if (parsed.length > 0) {
+            // Append continuation text to previous segment
+            parsed[parsed.length - 1].text = `${parsed[parsed.length - 1].text} ${line}`.trim();
+          } else {
+            parsed.push({ start: 0, end: 5, text: line });
+          }
+        }
+
+        // Adjust segment end times based on subsequent segment start times
+        for (let i = 0; i < parsed.length; i++) {
+          if (i < parsed.length - 1 && parsed[i + 1].start > parsed[i].start) {
+            parsed[i].end = parsed[i + 1].start;
+          } else if (state.audioDuration > parsed[i].start) {
+            parsed[i].end = state.audioDuration;
+          }
+        }
+        return parsed;
+      }
+
+      /**
+       * Displays a clean floating toast message (replaces native alert).
+       */
+      function showToast(message, variant = 'info') {
+        const colors = {
+          success: 'bg-emerald-600 text-white border-emerald-500',
+          error: 'bg-rose-600 text-white border-rose-500',
+          info: 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200',
+        };
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto px-4 py-3 rounded-xl border shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all duration-300 opacity-0 translate-y-2 ${colors[variant] || colors.info}`;
+        toast.textContent = message;
+        el.toastContainer.appendChild(toast);
+
+        requestAnimationFrame(() => {
+          toast.classList.remove('opacity-0', 'translate-y-2');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      function showError(title, message) {
+        el.errorTitle.textContent = title;
+        el.errorMessage.textContent = message;
+        el.errorBanner.classList.remove('hidden');
+      }
+
+      function hideError() {
+        el.errorBanner.classList.add('hidden');
+      }
+
+      function showFallbackNotice(message) {
+        el.fallbackMessage.textContent = message;
+        el.fallbackBanner.classList.remove('hidden');
+      }
+
+      function hideFallbackNotice() {
+        el.fallbackBanner.classList.add('hidden');
+      }
+
+      /* -----------------------------------------------------------------------
+         4. Web Worker Lifecycle Management
+         ----------------------------------------------------------------------- */
+      function initWorker() {
+        terminateWorker();
+        const workerSource = document.getElementById('whisper-worker-source').textContent;
+        const blob = new Blob([workerSource], { type: 'application/javascript' });
+        state.workerBlobUrl = URL.createObjectURL(blob);
+        state.worker = new Worker(state.workerBlobUrl, { type: 'module' });
+
+        state.worker.addEventListener('message', handleWorkerMessage);
+        state.worker.addEventListener('error', (err) => {
+          console.error('Worker Error:', err);
+          setProcessingState(false);
+          showError(
+            'Gagal Menjalankan Worker AI',
+            'Browser tidak dapat memuat modul @huggingface/transformers. Pastikan koneksi internet aktif pada pemakaian pertama untuk mengunduh library & model.'
+          );
+        });
+
+        // Probe WebGPU support immediately
+        state.worker.postMessage({ type: 'check_webgpu' });
+      }
+
+      function terminateWorker() {
+        if (state.worker) {
+          state.worker.terminate();
+          state.worker = null;
+        }
+        if (state.workerBlobUrl) {
+          URL.revokeObjectURL(state.workerBlobUrl);
+          state.workerBlobUrl = null;
+        }
+      }
+
+      function handleWorkerMessage(event) {
+        const msg = event.data;
+        if (!msg) return;
+
+        switch (msg.type) {
+          case 'webgpu_check_result':
+            if (msg.available) {
+              el.webgpuStatusPill.textContent = 'WebGPU Tersedia';
+              el.webgpuStatusPill.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60';
+            } else {
+              el.webgpuStatusPill.textContent = 'Mode CPU (WASM)';
+              el.webgpuStatusPill.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+            }
+            break;
+
+          case 'engine_info':
+            if (msg.note) {
+              el.inferSubtext.textContent = msg.note;
+            }
+            break;
+
+          case 'fallback':
+            showFallbackNotice(msg.reason);
+            break;
+
+          case 'status':
+            if (msg.stage === 'loading_model') {
+              const engineTag = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
+              setStepStatus('model', 'active', `Memuat (${engineTag})...`);
+            } else if (msg.stage === 'transcribing') {
+              const engineTag = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
+              setStepStatus('model', 'done', 'Siap (Cache)');
+              setStepStatus('infer', 'active', `Berjalan (${engineTag})`);
+              el.inferBarWrap.classList.remove('hidden');
+              el.inferSubtext.textContent = `Menjalankan Whisper (${engineTag}) per segmen 30 detik...`;
+            }
+            break;
+
+          case 'model_progress':
+            updateModelFileProgress(msg);
+            break;
+
+          case 'model_ready':
+            setStepStatus('model', 'done', msg.fromCache ? 'Aktif (Memori)' : 'Tersimpan di Cache');
+            break;
+
+          case 'complete':
+            setStepStatus('infer', 'done', `Selesai (${msg.device === 'webgpu' ? 'WebGPU' : 'WASM'})`);
+            el.inferBarWrap.classList.add('hidden');
+            el.progressPulse.classList.remove('animate-pulse', 'bg-indigo-500');
+            el.progressPulse.classList.add('bg-emerald-500');
+            setProcessingState(false);
+
+            if (!msg.segments || msg.segments.length === 0) {
+              showToast('Audio diproses, tetapi tidak ada ucapan yang terdeteksi.', 'info');
+            } else {
+              state.segments = msg.segments;
+              renderTranscript(true);
+              showToast(`Transkripsi selesai! (${msg.segments.length} baris dihasilkan)`, 'success');
+            }
+            break;
+
+          case 'error':
+            setProcessingState(false);
+            setStepStatus('infer', 'error', 'Gagal');
+            el.inferBarWrap.classList.add('hidden');
+            const friendlyMsg = /fetch|network|failed to load|offline/i.test(msg.message)
+              ? 'Gagal mengunduh file model Whisper ONNX. Pastikan Anda terhubung ke internet pada pemakaian pertama (setelah tersimpan di cache browser, aplikasi dapat berjalan offline). Detail: ' + msg.message
+              : 'Gagal memproses transkripsi: ' + msg.message;
+            showError('Transkripsi Terhenti', friendlyMsg);
+            break;
+        }
+      }
+
+      /* -----------------------------------------------------------------------
+         5. Audio Decoding & Resampling to 16kHz Mono Float32Array (Main Thread)
+         ----------------------------------------------------------------------- */
+      async function decodeAudioTo16kMono(file) {
+        let arrayBuffer;
+        try {
+          arrayBuffer = await file.arrayBuffer();
+        } catch (err) {
+          throw new Error('Tidak dapat membaca isi file audio yang dipilih.');
+        }
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) {
+          throw new Error('Browser Anda tidak mendukung Web Audio API untuk mendekode audio.');
+        }
+
+        const audioCtx = new AudioCtx();
+        let decodedBuffer;
+        try {
+          decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        } catch (err) {
+          throw new Error('Format file audio tidak didukung atau file rusak sehingga gagal didekode oleh browser.');
+        } finally {
+          try {
+            await audioCtx.close();
+          } catch (_) {}
+        }
+
+        const targetSampleRate = 16000;
+        const duration = decodedBuffer.duration;
+        const targetLength = Math.max(1, Math.ceil(duration * targetSampleRate));
+
+        const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        const offlineCtx = new OfflineCtx(1, targetLength, targetSampleRate);
+
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decodedBuffer;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+
+        const renderedBuffer = await offlineCtx.startRendering();
+        const channelData = renderedBuffer.getChannelData(0);
+
+        // Return a clean transferable Float32Array copy alongside exact duration
+        return {
+          float32: new Float32Array(channelData),
+          duration,
+        };
+      }
+
+      /* -----------------------------------------------------------------------
+         6. Transcription Trigger & Progress UI Helpers
+         ----------------------------------------------------------------------- */
+      function setStepStatus(step, status, badgeText) {
+        const map = {
+          model: { box: el.stepModel, icon: el.stepModelIcon, badge: el.stepModelBadge, num: '1' },
+          decode: { box: el.stepDecode, icon: el.stepDecodeIcon, badge: el.stepDecodeBadge, num: '2' },
+          infer: { box: el.stepInfer, icon: el.stepInferIcon, badge: el.stepInferBadge, num: '3' },
+        };
+        const s = map[step];
+        if (!s) return;
+
+        s.badge.textContent = badgeText;
+
+        if (status === 'idle') {
+          s.icon.innerHTML = s.num;
+          s.icon.className = 'w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-[11px] font-bold shrink-0';
+          s.badge.className = 'text-[11px] font-medium text-slate-500 dark:text-slate-400';
+          s.box.classList.remove('border-indigo-300', 'dark:border-indigo-700', 'border-emerald-300', 'dark:border-emerald-800');
+        } else if (status === 'active') {
+          s.icon.innerHTML = `<svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+          s.icon.className = 'w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0';
+          s.badge.className = 'text-[11px] font-semibold text-indigo-600 dark:text-indigo-400';
+          s.box.classList.add('border-indigo-300', 'dark:border-indigo-700');
+          s.box.classList.remove('border-emerald-300', 'dark:border-emerald-800');
+        } else if (status === 'done') {
+          s.icon.innerHTML = `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
+          s.icon.className = 'w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0';
+          s.badge.className = 'text-[11px] font-semibold text-emerald-600 dark:text-emerald-400';
+          s.box.classList.remove('border-indigo-300', 'dark:border-indigo-700');
+          s.box.classList.add('border-emerald-300', 'dark:border-emerald-800');
+        } else if (status === 'error') {
+          s.icon.innerHTML = '!';
+          s.icon.className = 'w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[11px] font-bold shrink-0';
+          s.badge.className = 'text-[11px] font-semibold text-rose-600 dark:text-rose-400';
+        }
+      }
+
+      function updateModelFileProgress(info) {
+        if (!info.file) return;
+        const shortName = info.file.split('/').pop();
+
+        if (info.status === 'initiate' || info.status === 'download' || info.status === 'progress' || info.status === 'done') {
+          el.modelFilesList.classList.remove('hidden');
+          const prev = state.fileProgressMap.get(shortName) || { progress: 0, loaded: 0, total: 0, status: 'initiate' };
+
+          const next = {
+            progress: info.status === 'done' ? 100 : (info.progress !== null ? info.progress : prev.progress),
+            loaded: info.loaded !== null ? info.loaded : prev.loaded,
+            total: info.total !== null ? info.total : prev.total,
+            status: info.status,
+          };
+          state.fileProgressMap.set(shortName, next);
+          renderModelFilesProgress();
+        }
+      }
+
+      function renderModelFilesProgress() {
+        el.modelFilesList.innerHTML = '';
+        state.fileProgressMap.forEach((data, fileName) => {
+          const pct = Math.min(100, Math.max(0, Math.round(data.progress || 0)));
+          const sizeStr = data.total > 0
+            ? `${formatBytes(data.loaded)} / ${formatBytes(data.total)}`
+            : (data.status === 'done' ? 'Tersimpan' : `${pct}%`);
+
+          const row = document.createElement('div');
+          row.className = 'space-y-1';
+          row.innerHTML = `
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <span class="font-mono text-slate-600 dark:text-slate-300 truncate" title="${fileName}">${fileName}</span>
+              <span class="text-slate-500 dark:text-slate-400 shrink-0">${sizeStr} (${pct}%)</span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-150 ${pct >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width: ${pct}%"></div>
+            </div>
+          `;
+          el.modelFilesList.appendChild(row);
+        });
+      }
+
+      function startElapsedTimer() {
+        stopElapsedTimer();
+        state.elapsedSeconds = 0;
+        el.elapsedTimer.textContent = '00:00';
+        state.elapsedInterval = setInterval(() => {
+          state.elapsedSeconds += 1;
+          el.elapsedTimer.textContent = formatClock(state.elapsedSeconds);
+        }, 1000);
+      }
+
+      function stopElapsedTimer() {
+        if (state.elapsedInterval) {
+          clearInterval(state.elapsedInterval);
+          state.elapsedInterval = null;
+        }
+      }
+
+      function setProcessingState(active) {
+        state.isProcessing = active;
+        el.btnTranscribe.disabled = active || !state.audioFile;
+        el.selectModel.disabled = active;
+        el.selectLanguage.disabled = active;
+        el.selectEngine.disabled = active;
+        el.btnRecord.disabled = active;
+
+        if (active) {
+          el.iconSpark.classList.add('hidden');
+          el.iconSpinner.classList.remove('hidden');
+          el.btnTranscribeText.textContent = 'Sedang Memproses...';
+          el.btnCancelText.textContent = 'Batal';
+          startElapsedTimer();
+        } else {
+          el.iconSpark.classList.remove('hidden');
+          el.iconSpinner.classList.add('hidden');
+          el.btnTranscribeText.textContent = 'Mulai Transkripsi';
+          el.btnCancelText.textContent = 'Reset';
+          stopElapsedTimer();
+        }
+      }
+
+      async function startTranscription() {
+        if (!state.audioFile || state.isProcessing) return;
+
+        hideError();
+        hideFallbackNotice();
+        state.fileProgressMap.clear();
+        el.modelFilesList.innerHTML = '';
+        el.modelFilesList.classList.add('hidden');
+
+        el.progressPanel.classList.remove('hidden');
+        el.progressPulse.classList.remove('bg-emerald-500');
+        el.progressPulse.classList.add('bg-indigo-500', 'animate-pulse');
+
+        setStepStatus('model', 'idle', 'Menunggu');
+        setStepStatus('decode', 'active', 'Mendekode...');
+        setStepStatus('infer', 'idle', 'Menunggu');
+        el.inferBarWrap.classList.add('hidden');
+
+        setProcessingState(true);
+
+        try {
+          // Step 1 on Main Thread: Reliable cross-browser decode & 16kHz Mono resample
+          const { float32, duration } = await decodeAudioTo16kMono(state.audioFile);
+          state.audioDuration = duration;
+          updateAudioMetaDisplay();
+          setStepStatus('decode', 'done', `16kHz Mono (${formatTimestamp(duration)})`);
+
+          // If user cancelled during decoding, abort cleanly
+          if (!state.isProcessing || !state.worker) return;
+
+          // Step 2: Send transferable Float32Array to Web Worker
+          setStepStatus('model', 'active', 'Menyiapkan...');
+          state.worker.postMessage(
+            {
+              type: 'transcribe',
+              audio: float32,
+              duration,
+              modelId: el.selectModel.value,
+              language: el.selectLanguage.value,
+              engine: el.selectEngine.value,
+            },
+            [float32.buffer]
+          );
+        } catch (err) {
+          setProcessingState(false);
+          setStepStatus('decode', 'error', 'Gagal');
+          showError('Gagal Mendekode Audio', err?.message || 'Format audio tidak dapat dibaca.');
+        }
+      }
+
+      /* -----------------------------------------------------------------------
+         7. Audio Input Handling (Drag & Drop, File Picker & Mic Recording)
+         ----------------------------------------------------------------------- */
+      function loadAudioFile(file) {
+        if (!file) return;
+        hideError();
+
+        if (state.audioObjectUrl) {
+          URL.revokeObjectURL(state.audioObjectUrl);
+        }
+
+        state.audioFile = file;
+        state.audioDuration = 0;
+        state.audioObjectUrl = URL.createObjectURL(file);
+
+        el.audioPlayer.src = state.audioObjectUrl;
+        el.audioFilename.textContent = file.name;
+        el.audioMeta.textContent = `${formatBytes(file.size)} • Memuat durasi...`;
+        el.audioPreviewCard.classList.remove('hidden');
+        el.btnTranscribe.disabled = state.isProcessing;
+
+        showToast(`File "${file.name}" siap ditranskripsi.`, 'info');
+      }
+
+      function updateAudioMetaDisplay() {
+        if (!state.audioFile) return;
+        const durText = state.audioDuration > 0 ? formatTimestamp(state.audioDuration) : '--:--';
+        el.audioMeta.textContent = `${formatBytes(state.audioFile.size)} • Durasi ${durText}`;
+      }
+
+      function clearAudioFile() {
+        if (state.audioObjectUrl) {
+          URL.revokeObjectURL(state.audioObjectUrl);
+          state.audioObjectUrl = null;
+        }
+        state.audioFile = null;
+        state.audioDuration = 0;
+        el.audioPlayer.pause();
+        el.audioPlayer.removeAttribute('src');
+        el.audioPlayer.load();
+        el.fileInput.value = '';
+        el.audioPreviewCard.classList.add('hidden');
+        el.btnTranscribe.disabled = true;
+      }
+
+      async function toggleRecording() {
+        if (state.isRecording) {
+          stopRecording();
+          return;
+        }
+
+        hideError();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showError(
+            'Mikrofon Tidak Didukung',
+            'Browser Anda tidak mendukung akses mikrofon (MediaDevices API) atau halaman tidak dijalankan melalui HTTPS/localhost.'
+          );
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const preferredTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+          const mimeType = preferredTypes.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+
+          state.recordedChunks = [];
+          state.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+          state.mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              state.recordedChunks.push(e.data);
+            }
+          };
+
+          state.mediaRecorder.onstop = () => {
+            stream.getTracks().forEach((track) => track.stop());
+            const finalType = state.mediaRecorder.mimeType || 'audio/webm';
+            const ext = finalType.includes('mp4') ? 'm4a' : finalType.includes('ogg') ? 'ogg' : 'webm';
+            const blob = new Blob(state.recordedChunks, { type: finalType });
+            const now = new Date();
+            const stamp = `${now.getHours()}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+            const recordedFile = new File([blob], `rekaman-mikrofon-${stamp}.${ext}`, { type: finalType });
+            loadAudioFile(recordedFile);
+          };
+
+          state.mediaRecorder.start();
+          state.isRecording = true;
+          state.recordSeconds = 0;
+          el.recordTimer.textContent = '00:00';
+          el.recordTimer.classList.remove('hidden');
+          el.recordLabel.textContent = 'Hentikan Rekaman';
+          el.recordDot.classList.add('animate-ping');
+          el.btnRecord.classList.add('border-rose-300', 'dark:border-rose-800', 'bg-rose-50', 'dark:bg-rose-950/50', 'text-rose-700', 'dark:text-rose-300');
+
+          state.recordInterval = setInterval(() => {
+            state.recordSeconds += 1;
+            el.recordTimer.textContent = formatClock(state.recordSeconds);
+          }, 1000);
+        } catch (err) {
+          let msg = 'Gagal mengakses mikrofon.';
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            msg = 'Izin mikrofon ditolak. Silakan izinkan akses mikrofon di pengaturan browser Anda lalu coba lagi.';
+          } else if (err.name === 'NotFoundError') {
+            msg = 'Perangkat mikrofon tidak ditemukan pada perangkat Anda.';
+          }
+          showError('Akses Mikrofon Gagal', msg);
+        }
+      }
+
+      function stopRecording() {
+        if (!state.isRecording) return;
+        state.isRecording = false;
+        if (state.recordInterval) {
+          clearInterval(state.recordInterval);
+          state.recordInterval = null;
+        }
+        el.recordTimer.classList.add('hidden');
+        el.recordLabel.textContent = 'Rekam Mikrofon';
+        el.recordDot.classList.remove('animate-ping');
+        el.btnRecord.classList.remove('border-rose-300', 'dark:border-rose-800', 'bg-rose-50', 'dark:bg-rose-950/50', 'text-rose-700', 'dark:text-rose-300');
+
+        if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+          state.mediaRecorder.stop();
+        }
+      }
+
+      /* -----------------------------------------------------------------------
+         8. Transcript Rendering, Interactive Sync & Export
+         ----------------------------------------------------------------------- */
+      function setExportButtonsEnabled(enabled) {
+        el.btnCopy.disabled = !enabled;
+        el.btnDownloadTxt.disabled = !enabled;
+        el.btnDownloadSrt.disabled = !enabled;
+      }
+
+      function renderTranscript(updateRaw = true) {
+        const hasSegments = state.segments.length > 0;
+        setExportButtonsEnabled(hasSegments);
+
+        if (!hasSegments) {
+          el.emptyState.classList.remove('hidden');
+          el.viewInteractive.classList.add('hidden');
+          el.viewRaw.classList.add('hidden');
+          el.segmentCountBadge.classList.add('hidden');
+          return;
+        }
+
+        el.emptyState.classList.add('hidden');
+        el.segmentCountBadge.textContent = `${state.segments.length} baris`;
+        el.segmentCountBadge.classList.remove('hidden');
+
+        if (state.activeTab === 'interactive') {
+          el.viewInteractive.classList.remove('hidden');
+          el.viewRaw.classList.add('hidden');
+        } else {
+          el.viewInteractive.classList.add('hidden');
+          el.viewRaw.classList.remove('hidden');
+        }
+
+        renderInteractiveList();
+        if (updateRaw) {
+          el.rawTextarea.value = segmentsToRawText(state.segments);
+        }
+      }
+
+      function renderInteractiveList() {
+        el.interactiveList.innerHTML = '';
+
+        state.segments.forEach((seg, index) => {
+          const row = document.createElement('div');
+          row.dataset.index = String(index);
+          row.className = 'group flex items-start gap-3 p-2.5 sm:p-3 rounded-xl border border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
+
+          // Clickable Timestamp Pill
+          const tsBtn = document.createElement('button');
+          tsBtn.type = 'button';
+          tsBtn.title = 'Klik untuk memutar audio dari detik ini';
+          tsBtn.className = 'shrink-0 mt-0.5 px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:hover:bg-indigo-900/80 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70 transition-colors cursor-pointer';
+          tsBtn.textContent = `[${formatTimestamp(seg.start)}]`;
+          tsBtn.addEventListener('click', () => seekAudioTo(seg.start));
+
+          // Inline Editable Text
+          const textDiv = document.createElement('div');
+          textDiv.contentEditable = 'true';
+          textDiv.spellcheck = false;
+          textDiv.setAttribute('role', 'textbox');
+          textDiv.setAttribute('aria-label', `Teks transkrip menit ${formatTimestamp(seg.start)}`);
+          textDiv.className = 'flex-1 text-sm leading-relaxed text-slate-800 dark:text-slate-200 rounded-lg px-2 py-0.5 -mx-2 focus:outline-none focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-indigo-500/30 transition-all';
+          textDiv.textContent = seg.text;
+
+          // Keep Raw Text synced on every edit
+          textDiv.addEventListener('input', () => {
+            state.segments[index].text = textDiv.textContent.replace(/\s+/g, ' ').trim();
+            el.rawTextarea.value = segmentsToRawText(state.segments);
+          });
+
+          // Prevent Enter key from breaking single-line timestamp structure
+          textDiv.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              textDiv.blur();
+            }
+          });
+
+          row.appendChild(tsBtn);
+          row.appendChild(textDiv);
+          el.interactiveList.appendChild(row);
+        });
+
+        highlightActiveSegment(el.audioPlayer.currentTime || 0);
+      }
+
+      function seekAudioTo(seconds) {
+        if (!state.audioFile || !el.audioPlayer.src) {
+          showToast('Muat atau rekam file audio terlebih dahulu untuk memutar timestamp ini.', 'info');
+          return;
+        }
+        try {
+          el.audioPlayer.currentTime = Math.max(0, seconds);
+          const playPromise = el.audioPlayer.play();
+          if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {});
+          }
+          highlightActiveSegment(seconds);
+        } catch (_) {}
+      }
+
+      function highlightActiveSegment(currentTime) {
+        if (!state.segments.length || !state.audioFile) return;
+
+        let activeIdx = -1;
+        for (let i = 0; i < state.segments.length; i++) {
+          const seg = state.segments[i];
+          const nextStart = state.segments[i + 1] ? state.segments[i + 1].start : Infinity;
+          if (currentTime >= seg.start && currentTime < Math.max(seg.end || 0, nextStart)) {
+            activeIdx = i;
+            break;
+          }
+        }
+
+        if (activeIdx === state.activeSegmentIndex) return;
+        state.activeSegmentIndex = activeIdx;
+
+        const rows = el.interactiveList.children;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (i === activeIdx) {
+            row.classList.add('bg-indigo-50/80', 'dark:bg-indigo-950/40', 'border-indigo-200', 'dark:border-indigo-800/80');
+            row.classList.remove('border-transparent');
+          } else {
+            row.classList.remove('bg-indigo-50/80', 'dark:bg-indigo-950/40', 'border-indigo-200', 'dark:border-indigo-800/80');
+            row.classList.add('border-transparent');
+          }
+        }
+      }
+
+      function switchTab(tab) {
+        state.activeTab = tab;
+        const isInteractive = tab === 'interactive';
+
+        el.tabInteractive.setAttribute('aria-selected', String(isInteractive));
+        el.tabRaw.setAttribute('aria-selected', String(!isInteractive));
+
+        if (isInteractive) {
+          el.tabInteractive.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all';
+          el.tabRaw.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all';
+        } else {
+          el.tabRaw.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all';
+          el.tabInteractive.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all';
+        }
+
+        if (state.segments.length > 0) {
+          if (isInteractive) {
+            el.viewInteractive.classList.remove('hidden');
+            el.viewRaw.classList.add('hidden');
+            renderInteractiveList();
+          } else {
+            el.viewInteractive.classList.add('hidden');
+            el.viewRaw.classList.remove('hidden');
+            el.rawTextarea.value = segmentsToRawText(state.segments);
+          }
+        }
+      }
+
+      /**
+       * Copies transcript to clipboard using execCommand fallback (iframe-safe).
+       */
+      function copyTranscript() {
+        if (!state.segments.length) return;
+        const text = segmentsToRawText(state.segments);
+
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', '');
+        temp.style.position = 'fixed';
+        temp.style.top = '-9999px';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        temp.setSelectionRange(0, temp.value.length);
+
+        let copied = false;
+        try {
+          copied = document.execCommand('copy');
+        } catch (_) {
+          copied = false;
+        }
+        document.body.removeChild(temp);
+
+        if (copied) {
+          showToast('Transkrip berhasil disalin ke clipboard!', 'success');
+        } else {
+          showToast('Gagal menyalin otomatis. Silakan salin manual dari tab Teks Mentah.', 'error');
+        }
+      }
+
+      function triggerDownload(content, extension, mimeType) {
+        if (!state.segments.length) return;
+        const baseName = state.audioFile
+          ? state.audioFile.name.replace(/\.[^/.]+$/, '')
+          : 'transkrip-lokal';
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${baseName}.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast(`File ${baseName}.${extension} berhasil diunduh!`, 'success');
+      }
+
+      function loadSampleTranscript() {
+        state.segments = SAMPLE_SEGMENTS.map((s) => ({ ...s }));
+        renderTranscript(true);
+        showToast('Contoh format transkrip dimuat. Coba edit teks atau lihat tab Teks Mentah!', 'info');
+      }
+
+      function handleCancelOrReset() {
+        if (state.isProcessing) {
+          // Immediately terminate stuck/running worker and recreate fresh worker
+          setProcessingState(false);
+          initWorker();
+          el.progressPanel.classList.add('hidden');
+          showToast('Proses dibatalkan dan engine AI telah di-reset.', 'info');
+        } else {
+          hideError();
+          hideFallbackNotice();
+          clearAudioFile();
+          state.segments = [];
+          state.activeSegmentIndex = -1;
+          el.rawTextarea.value = '';
+          el.progressPanel.classList.add('hidden');
+          renderTranscript(true);
+          showToast('Workspace telah di-reset.', 'info');
+        }
+      }
+
+      /* -----------------------------------------------------------------------
+         9. Theme & UI Event Bindings
+         ----------------------------------------------------------------------- */
+      function initTheme() {
+        const saved = localStorage.getItem('transkriplokal_theme');
+        if (saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      }
+
+      function bindEvents() {
+        // Theme toggle
+        el.btnThemeToggle.addEventListener('click', () => {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('transkriplokal_theme', isDark ? 'dark' : 'light');
+        });
+
+        // Info drawer toggle
+        el.btnInfoToggle.addEventListener('click', () => {
+          const hidden = el.infoDrawer.classList.toggle('hidden');
+          el.btnInfoToggle.setAttribute('aria-expanded', String(!hidden));
+        });
+
+        // Banner dismissals
+        el.btnDismissError.addEventListener('click', hideError);
+        el.btnDismissFallback.addEventListener('click', hideFallbackNotice);
+
+        // Drop zone & File input
+        el.dropZone.addEventListener('click', () => el.fileInput.click());
+        el.fileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            loadAudioFile(e.target.files[0]);
+          }
+        });
+
+        ['dragenter', 'dragover'].forEach((evt) => {
+          el.dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.dropZone.classList.add('border-indigo-500', 'bg-indigo-50/60', 'dark:bg-indigo-950/30');
+          });
+        });
+
+        ['dragleave', 'drop'].forEach((evt) => {
+          el.dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/60', 'dark:bg-indigo-950/30');
+          });
+        });
+
+        el.dropZone.addEventListener('drop', (e) => {
+          const files = e.dataTransfer && e.dataTransfer.files;
+          if (files && files[0]) {
+            loadAudioFile(files[0]);
+          }
+        });
+
+        // Audio player metadata & real-time playback highlighting
+        el.audioPlayer.addEventListener('loadedmetadata', () => {
+          if (Number.isFinite(el.audioPlayer.duration)) {
+            state.audioDuration = el.audioPlayer.duration;
+            updateAudioMetaDisplay();
+          }
+        });
+
+        el.audioPlayer.addEventListener('timeupdate', () => {
+          highlightActiveSegment(el.audioPlayer.currentTime);
+        });
+
+        el.btnRemoveAudio.addEventListener('click', clearAudioFile);
+
+        // Microphone recorder
+        el.btnRecord.addEventListener('click', toggleRecording);
+
+        // Main actions
+        el.btnTranscribe.addEventListener('click', startTranscription);
+        el.btnCancelReset.addEventListener('click', handleCancelOrReset);
+
+        // Tabs
+        el.tabInteractive.addEventListener('click', () => switchTab('interactive'));
+        el.tabRaw.addEventListener('click', () => switchTab('raw'));
+
+        // Raw textarea live two-way sync
+        el.rawTextarea.addEventListener('input', () => {
+          const parsed = parseRawTextToSegments(el.rawTextarea.value);
+          state.segments = parsed;
+          el.segmentCountBadge.textContent = `${parsed.length} baris`;
+          setExportButtonsEnabled(parsed.length > 0);
+        });
+
+        // Sample & Exports
+        el.btnLoadSample.addEventListener('click', loadSampleTranscript);
+        el.btnEmptySample.addEventListener('click', loadSampleTranscript);
+        el.btnCopy.addEventListener('click', copyTranscript);
+        el.btnDownloadTxt.addEventListener('click', () => {
+          triggerDownload(segmentsToRawText(state.segments), 'txt', 'text/plain;charset=utf-8');
+        });
+        el.btnDownloadSrt.addEventListener('click', () => {
+          triggerDownload(segmentsToSrt(state.segments), 'srt', 'text/plain;charset=utf-8');
+        });
+      }
+
+      /* -----------------------------------------------------------------------
+         10. Bootstrap Application
+         ----------------------------------------------------------------------- */
+      initTheme();
+      bindEvents();
+      initWorker();
+    })();
+  </script>
+</body>
+</html>
